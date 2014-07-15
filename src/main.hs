@@ -6,6 +6,7 @@ import Network.Xmpp
 
 import Data.Aeson
 import Data.Text
+import Data.Either
 import qualified Data.ByteString.Lazy as B
 
 import Control.Monad
@@ -30,10 +31,27 @@ main = do
               Left e -> error $ "XmppFailure: " ++ show e
            sendPresence def sess
            forever $ do
-              msg <- getMessage sess
-              case answerMessage msg (messagePayload msg) of
-                 Just answer -> void $ sendMessage answer sess 
-                 Nothing -> putStrLn "Received message with no sender."
+              handlePresenceRequests sess
+              --msg <- getMessage sess
+              --case answerMessage msg (messagePayload msg) of
+              --   Just answer -> void $ sendMessage answer sess 
+              --   Nothing -> putStrLn "Received message with no sender."
+
+handlePresenceRequests :: Session -> IO ()
+handlePresenceRequests sess = do
+   presenceRequest <- pullPresence sess
+   case presenceRequest of
+        Left x  -> putStrLn $ show x
+        Right x -> do
+           let requestingJid = presenceFrom x
+           case requestingJid of
+                Nothing  -> putStrLn "No Jid to answer to found."
+                Just jid -> do
+                   let presenceAllowed = presenceSubscribed jid 
+                   result <- sendPresence presenceAllowed sess
+                   case result of
+                     Left x  -> putStrLn $ show x
+                     Right _ -> return ()
 
 readXmppConfig :: String -> IO (Maybe XmppConfig)
 readXmppConfig "" = return Nothing
