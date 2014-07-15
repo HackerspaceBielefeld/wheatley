@@ -13,13 +13,18 @@ import Control.Monad
 import Control.Applicative
 import Data.Default
 import System.Log.Logger
+--import GHC.Conc.Sync
+import Control.Concurrent.MVar
+import Control.Concurrent
 
-main :: IO ()
+main :: IO (MVar ())
 main = do
    updateGlobalLogger "Pontarius.Xmpp" $ setLevel DEBUG
    conf <- readXmppConfig "wheatley.conf"
    case conf of
-        Nothing -> putStrLn "wheatley.conf couldn't been read."
+        Nothing -> do
+           putStrLn "wheatley.conf couldn't been read."
+           newEmptyMVar
         Just c  -> do 
            result <- session
               ( unpack $ server c ) 
@@ -30,15 +35,24 @@ main = do
               Right s -> return s
               Left e -> error $ "XmppFailure: " ++ show e
            sendPresence def sess
-           forever $ do
-              handlePresenceRequests sess
-              --msg <- getMessage sess
-              --case answerMessage msg (messagePayload msg) of
-              --   Just answer -> void $ sendMessage answer sess 
-              --   Nothing -> putStrLn "Received message with no sender."
+           do
+              sessPresenceRequest <- dupSession sess
+              mvarPresenceRequests <- newEmptyMVar
+              forkFinally ( handlePresenceRequests sessPresenceRequest ) (\_ -> putMVar mvarPresenceRequests () )
+              sessAnswerMessages <- dupSession sess
+              mvarAnswerMessages <- newEmptyMVar
+              forkFinally ( handleMessages sess ) (\_ -> putMVar mvarAnswerMessages () )
+              return mvarPresenceRequests
+
+handleMessages :: Session -> IO ()
+handleMessages sess = forever $ do
+   msg <- getMessage sess
+   case answerMessage msg (messagePayload msg) of
+        Just answer -> void $ sendMessage answer sess
+        Nothing     -> putStrLn "Received message with no sender."
 
 handlePresenceRequests :: Session -> IO ()
-handlePresenceRequests sess = do
+handlePresenceRequests sess = forever $ do
    presenceRequest <- pullPresence sess
    case presenceRequest of
         Left x  -> putStrLn $ show x
