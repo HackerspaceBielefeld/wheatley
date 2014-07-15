@@ -16,20 +16,24 @@ import System.Log.Logger
 main :: IO ()
 main = do
    updateGlobalLogger "Pontarius.Xmpp" $ setLevel DEBUG
-   result <- session
-      "jabber.space.bi"
-      (Just (\_ -> [scramSha1 "wheatley" Nothing "wheatley"]
-         , Nothing))
-      def
-   sess <- case result of
-      Right s -> return s
-      Left e -> error $ "XmppFailure: " ++ show e
-   sendPresence def sess
-   forever $ do
-      msg <- getMessage sess
-      case answerMessage msg (messagePayload msg) of
-         Just answer -> void $ sendMessage answer sess 
-         Nothing -> putStrLn "Received message with no sender."
+   conf <- readXmppConfig "wheatley.conf"
+   case conf of
+        Nothing -> putStrLn "wheatley.conf couldn't been read."
+        Just c  -> do 
+           result <- session
+              ( unpack $ server c ) 
+              (Just (\_ -> [scramSha1 ( username c ) Nothing ( password c )] 
+                 , Nothing))
+              def
+           sess <- case result of
+              Right s -> return s
+              Left e -> error $ "XmppFailure: " ++ show e
+           sendPresence def sess
+           forever $ do
+              msg <- getMessage sess
+              case answerMessage msg (messagePayload msg) of
+                 Just answer -> void $ sendMessage answer sess 
+                 Nothing -> putStrLn "Received message with no sender."
 
 readXmppConfig :: String -> IO (Maybe XmppConfig)
 readXmppConfig "" = return Nothing
