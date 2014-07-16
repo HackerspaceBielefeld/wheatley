@@ -18,5 +18,5 @@ executable wheatley
   main-is:             main.hs
   ghc-options:         -threaded
   -- other-modules:       
-  build-depends:       base ==4.6.*, hslogger ==1.2.*, data-default ==0.5.3, pontarius-xmpp == 0.4.*, aeson ==0.7.0.*, text ==1.1.1.*, bytestring ==0.10.0.2
+  build-depends:       base ==4.6.*, hslogger ==1.2.*, data-default ==0.5.3, pontarius-xmpp == 0.4.*, aeson ==0.7.0.*, text ==1.1.1.*, bytestring ==0.10.0.2, xml-types ==0.3.4
   hs-source-dirs:      src

@@ -5,9 +5,10 @@ module Main where
 import Network.Xmpp
 
 import Data.Aeson
-import Data.Text
+import qualified Data.Text as T
 import Data.Maybe
 import qualified Data.ByteString.Lazy as B
+import Data.XML.Types
 
 import Control.Monad
 import Control.Applicative
@@ -22,7 +23,7 @@ main = do
         Nothing -> putStrLn "wheatley.conf couldn't be read."
         Just c  -> do 
            result <- session
-              ( unpack $ server c ) 
+              ( T.unpack $ server c ) 
               (Just ( const [scramSha1 ( username c ) Nothing ( password c )] 
                  , Nothing))
               def
@@ -48,9 +49,29 @@ joinChannel sess chan = do
 handleMessages :: Session -> IO ()
 handleMessages sess = forever $ do
    msg <- getMessage sess
-   case answerMessage msg (messagePayload msg) of
-        Just answer -> void $ sendMessage answer sess
-        Nothing     -> putStrLn "Received message with no sender."
+   case T.words ( getTextFromMessage msg ) of
+        []            -> return ()
+        ( ":echo":m ) -> do
+           case answerMessage msg (messagePayload m) of
+               Just answer -> void sendMessage answer 
+               Nothing     -> putStrLn "Received message with no sender."
+        _             -> return ()
+
+getTextFromMessage :: Message -> T.Text
+getTextFromMessage m = case messagePayload m of
+                       [] -> ""
+                       x  -> foldl ( \a b -> a (T.append) ( getBodyFromElement b ) ) "" x 
+
+getBodyFromElement :: Element -> T.Text
+getBodyFromElement e = case elementAttributes e of
+                            []     -> ""
+                            (n, c) -> case nameLocalName n of
+                                           "body" -> foldl ( \a b -> a (T.append) ( getTextFromContent c ) ) "" c
+                                           _      -> ""
+
+getTextFromContent :: Content -> T.Text
+getTextFromContent ( ContentText t ) = t
+getTextFromContent _                 = ""
 
 handlePresenceRequests :: Session -> IO ()
 handlePresenceRequests sess = forever $ do
@@ -75,10 +96,10 @@ readXmppConfig f  = do
    return ( decode s :: Maybe XmppConfig )
 
 data XmppConfig = XmppConfig {
-   server   :: Text,
-   username :: Text,
-   password :: Text,
-   channel  :: Text}
+   server   :: T.Text,
+   username :: T.Text,
+   password :: T.Text,
+   channel  :: T.Text}
    deriving Show
 
 instance FromJSON XmppConfig where
