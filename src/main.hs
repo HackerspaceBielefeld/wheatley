@@ -6,43 +6,33 @@ import Network.Xmpp
 
 import Data.Aeson
 import Data.Text
-import Data.Either
 import qualified Data.ByteString.Lazy as B
 
 import Control.Monad
 import Control.Applicative
-import Data.Default
 import System.Log.Logger
---import GHC.Conc.Sync
-import Control.Concurrent.MVar
 import Control.Concurrent
 
-main :: IO (MVar ())
+main :: IO ()
 main = do
    updateGlobalLogger "Pontarius.Xmpp" $ setLevel DEBUG
    conf <- readXmppConfig "wheatley.conf"
    case conf of
-        Nothing -> do
-           putStrLn "wheatley.conf couldn't be read."
-           newEmptyMVar
+        Nothing -> putStrLn "wheatley.conf couldn't be read."
         Just c  -> do 
            result <- session
               ( unpack $ server c ) 
-              (Just (\_ -> [scramSha1 ( username c ) Nothing ( password c )] 
+              (Just ( const [scramSha1 ( username c ) Nothing ( password c )] 
                  , Nothing))
               def
            sess <- case result of
               Right s -> return s
               Left e -> error $ "XmppFailure: " ++ show e
-           sendPresence def sess
-           do
-              sessPresenceRequest <- dupSession sess
-              mvarPresenceRequests <- newEmptyMVar
-              forkFinally ( handlePresenceRequests sessPresenceRequest ) (\_ -> putMVar mvarPresenceRequests () )
-              sessAnswerMessages <- dupSession sess
-              mvarAnswerMessages <- newEmptyMVar
-              forkFinally ( handleMessages sess ) (\_ -> putMVar mvarAnswerMessages () )
-              return mvarPresenceRequests
+           _ <- sendPresence def sess
+           sessPresenceRequest <- dupSession sess
+           _ <- forkIO $ handlePresenceRequests sessPresenceRequest
+           sessAnswerMessages <- dupSession sess
+           handleMessages sessAnswerMessages
 
 handleMessages :: Session -> IO ()
 handleMessages sess = forever $ do
@@ -55,16 +45,16 @@ handlePresenceRequests :: Session -> IO ()
 handlePresenceRequests sess = forever $ do
    presenceRequest <- pullPresence sess
    case presenceRequest of
-        Left x  -> putStrLn $ show x
+        Left x  -> print x
         Right x -> do
            let requestingJid = presenceFrom x
            case requestingJid of
                 Nothing  -> putStrLn "No Jid to answer to found."
-                Just jid -> do
-                   let presenceAllowed = presenceSubscribed jid 
+                Just answerJid -> do
+                   let presenceAllowed = presenceSubscribed answerJid 
                    result <- sendPresence presenceAllowed sess
                    case result of
-                     Left x  -> putStrLn $ show x
+                     Left y  -> print y
                      Right _ -> return ()
 
 readXmppConfig :: String -> IO (Maybe XmppConfig)
