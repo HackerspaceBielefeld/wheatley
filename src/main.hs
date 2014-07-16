@@ -6,6 +6,7 @@ import Network.Xmpp
 
 import Data.Aeson
 import Data.Text
+import Data.Maybe
 import qualified Data.ByteString.Lazy as B
 
 import Control.Monad
@@ -26,13 +27,23 @@ main = do
                  , Nothing))
               def
            sess <- case result of
-              Right s -> return s
-              Left e -> error $ "XmppFailure: " ++ show e
+                        Right s -> return s
+                        Left e  -> error $ "XmppFailure: " ++ show e
            _ <- sendPresence def sess
+           let channelJid = fromMaybe ( error "Invalid Channel" ) ( jidFromText $ channel c ) 
+           chan <- joinChannel sess channelJid 
+           _ <- case chan of
+                        Right s -> return s
+                        Left e  -> error $ "XmppFailure: " ++ show e
            sessPresenceRequest <- dupSession sess
            _ <- forkIO $ handlePresenceRequests sessPresenceRequest
            sessAnswerMessages <- dupSession sess
            handleMessages sessAnswerMessages
+
+joinChannel :: Session -> Jid -> IO ( Either XmppFailure () )
+joinChannel sess chan = do
+   let channelPresence = Presence Nothing Nothing ( Just chan ) Nothing Available []
+   sendPresence channelPresence sess
 
 handleMessages :: Session -> IO ()
 handleMessages sess = forever $ do
