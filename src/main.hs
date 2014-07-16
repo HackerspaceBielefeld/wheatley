@@ -23,7 +23,7 @@ main = do
    conf <- readXmppConfig "wheatley.conf"
    case conf of
         Nothing -> do
-           putStrLn "wheatley.conf couldn't been read."
+           putStrLn "wheatley.conf couldn't be read."
            newEmptyMVar
         Just c  -> do 
            result <- session
