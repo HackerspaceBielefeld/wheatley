@@ -7,3 +7,7 @@ Current Features:
 -----------------
 * answers every subscriptions request
 * sends back every message he got to sender
+
+Feautures on the row:
+---------------------
+Have a look at the enhancement issues at github.
