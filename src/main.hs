@@ -3,6 +3,7 @@
 module Main where
 
 import Network.Xmpp
+import Network.Xmpp.IM
 
 import Data.Aeson
 import qualified Data.Text as T
@@ -49,29 +50,19 @@ joinChannel sess chan = do
 handleMessages :: Session -> IO ()
 handleMessages sess = forever $ do
    msg <- getMessage sess
-   case T.words ( getTextFromMessage msg ) of
-        []            -> return ()
-        ( ":echo":m ) -> do
-           case answerMessage msg (messagePayload m) of
-               Just answer -> void sendMessage answer 
-               Nothing     -> putStrLn "Received message with no sender."
-        _             -> return ()
-
-getTextFromMessage :: Message -> T.Text
-getTextFromMessage m = case messagePayload m of
-                       [] -> ""
-                       x  -> foldl ( \a b -> a (T.append) ( getBodyFromElement b ) ) "" x 
-
-getBodyFromElement :: Element -> T.Text
-getBodyFromElement e = case elementAttributes e of
-                            []     -> ""
-                            (n, c) -> case nameLocalName n of
-                                           "body" -> foldl ( \a b -> a (T.append) ( getTextFromContent c ) ) "" c
-                                           _      -> ""
-
-getTextFromContent :: Content -> T.Text
-getTextFromContent ( ContentText t ) = t
-getTextFromContent _                 = ""
+   case ( getIM msg ) of
+        Nothing                             -> return ()
+        Just (InstantMessage _ _ [])        -> return ()
+        Just (InstantMessage _ _ ((MessageBody l c):_)) -> case (T.words c) of
+                                               ":echo":cs -> do
+                                                     let body       = MessageBody l $ T.unwords cs
+                                                         ansMessage = answerIM [body] msg
+                                                     case ansMessage of
+                                                          Nothing -> return ()
+                                                          Just m  -> do 
+                                                             _ <- sendMessage m sess
+                                                             return ()
+                                               _          -> return ()
 
 handlePresenceRequests :: Session -> IO ()
 handlePresenceRequests sess = forever $ do
