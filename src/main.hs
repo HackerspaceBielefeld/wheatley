@@ -64,6 +64,17 @@ handleMessages sess = forever $ do
                                                              return ()
                                                _          -> return ()
 
+answerMess :: Message -> MessageBody -> Maybe Message
+answerMess m b = case ( messageType m ) of
+                      Chat      -> answerIM [b] m
+                      GroupChat -> do
+                         case messageFrom m of
+                              Nothing -> Nothing
+                              Just j  -> do
+                                 let aMsg = Message Nothing (messageTo m) (Just $ toBare j) (messageLangTag m) GroupChat []
+                                 Just $ withIM aMsg (InstantMessage Nothing [] [b])
+                      _          -> Nothing
+
 handlePresenceRequests :: Session -> IO ()
 handlePresenceRequests sess = forever $ do
    presenceRequest <- pullPresence sess
