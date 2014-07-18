@@ -56,7 +56,7 @@ handleMessages sess = forever $ do
         Just (InstantMessage _ _ ((MessageBody l c):_)) -> case (T.words c) of
                                                ":echo":cs -> do
                                                      let body       = MessageBody l $ T.unwords cs
-                                                         ansMessage = answerIM [body] msg
+                                                         ansMessage = answerMess msg body
                                                      case ansMessage of
                                                           Nothing -> return ()
                                                           Just m  -> do 
