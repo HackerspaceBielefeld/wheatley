@@ -9,7 +9,6 @@ import Data.Aeson
 import qualified Data.Text as T
 import Data.Maybe
 import qualified Data.ByteString.Lazy as B
-import Data.XML.Types
 
 import Control.Monad
 import Control.Applicative
@@ -50,10 +49,10 @@ joinChannel sess chan = do
 handleMessages :: Session -> IO ()
 handleMessages sess = forever $ do
    msg <- getMessage sess
-   case ( getIM msg ) of
+   case getIM msg of
         Nothing                             -> return ()
         Just (InstantMessage _ _ [])        -> return ()
-        Just (InstantMessage _ _ ((MessageBody l c):_)) -> case (T.words c) of
+        Just (InstantMessage _ _ (MessageBody l c:_)) -> case T.words c of
                                                ":echo":cs -> do
                                                      let body       = MessageBody l $ T.unwords cs
                                                          ansMessage = answerMess msg body
@@ -65,10 +64,9 @@ handleMessages sess = forever $ do
                                                _          -> return ()
 
 answerMess :: Message -> MessageBody -> Maybe Message
-answerMess m b = case ( messageType m ) of
+answerMess m b = case messageType m of
                       Chat      -> answerIM [b] m
-                      GroupChat -> do
-                         case messageFrom m of
+                      GroupChat -> case messageFrom m of
                               Nothing -> Nothing
                               Just j  -> do
                                  let aMsg = Message Nothing (messageTo m) (Just $ toBare j) (messageLangTag m) GroupChat []
@@ -80,9 +78,7 @@ handlePresenceRequests sess = forever $ do
    presenceRequest <- pullPresence sess
    case presenceRequest of
         Left x  -> print x
-        Right x -> do
-           let requestingJid = presenceFrom x
-           case requestingJid of
+        Right x -> case presenceFrom x of
                 Nothing  -> putStrLn "No Jid to answer to found."
                 Just answerJid -> do
                    let presenceAllowed = presenceSubscribed answerJid 
