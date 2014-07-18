@@ -15,6 +15,8 @@ import Control.Applicative
 import System.Log.Logger
 import Control.Concurrent
 
+import TitleForLink
+
 main :: IO ()
 main = do
    updateGlobalLogger "Pontarius.Xmpp" $ setLevel DEBUG
@@ -53,6 +55,7 @@ handleMessages sess = forever $ do
         Nothing                             -> return ()
         Just (InstantMessage _ _ [])        -> return ()
         Just (InstantMessage _ _ (MessageBody l c:_)) -> case T.words c of
+                                               []         -> return ()   
                                                ":echo":cs -> do
                                                      let body       = MessageBody l $ T.unwords cs
                                                          ansMessage = answerMess msg body
@@ -61,7 +64,24 @@ handleMessages sess = forever $ do
                                                           Just m  -> do 
                                                              _ <- sendMessage m sess
                                                              return ()
-                                               _          -> return ()
+                                               text       -> displayTitleForLinks sess msg text              
+
+displayTitleForLinks :: Session -> Message -> [T.Text] -> IO ()
+displayTitleForLinks sess msg text = do 
+   titles <- mapM titleForLink text
+   let links = zip titles text
+   displayTitles links
+     where displayTitles :: [(Maybe T.Text,  T.Text)] -> IO ()
+           displayTitles []                     = return ()
+           displayTitles ((Just title, orig):x) = do
+              let body = MessageBody (messageLangTag msg) (title `T.append` (T.pack "\n") `T.append` orig)
+              case answerMess msg body of
+                   Nothing -> return () 
+                   Just m  -> do
+                      _ <- sendMessage m sess
+                      return ()
+              displayTitles x
+           displayTitles ((Nothing, _):x)       = displayTitles x
 
 answerMess :: Message -> MessageBody -> Maybe Message
 answerMess m b = case messageType m of
