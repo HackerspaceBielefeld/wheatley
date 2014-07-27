@@ -45,7 +45,7 @@ main = do
 
 joinChannel :: Session -> Jid -> IO ( Either XmppFailure () )
 joinChannel sess chan = do
-   let channelPresence = Presence Nothing Nothing ( Just chan ) Nothing Available []
+   let channelPresence = Presence Nothing Nothing ( Just chan ) Nothing Available [] []
    sendPresence channelPresence sess
 
 handleMessages :: Session -> IO ()
@@ -89,7 +89,7 @@ answerMess m b = case messageType m of
                       GroupChat -> case messageFrom m of
                               Nothing -> Nothing
                               Just j  -> do
-                                 let aMsg = Message Nothing (messageTo m) (Just $ toBare j) (messageLangTag m) GroupChat []
+                                 let aMsg = Message Nothing (messageTo m) (Just $ toBare j) (messageLangTag m) GroupChat [] []
                                  Just $ withIM aMsg (InstantMessage Nothing [] [b])
                       _          -> Nothing
 
