@@ -30,6 +30,4 @@ extractTitle bs = do
    let tags = canonicalizeTags $ parseTags bs
    case takeWhile (not . isTagCloseName "title") $ dropWhile (not . isTagOpenName "title") tags of
         [] -> Nothing
-        t  -> Just $ T.pack $ C.unpack $ foldl readTags "" t
-          where readTags a (TagText b) = a `B.append` b
-                readTags a _           = a
+        t  -> Just $ T.pack $ C.unpack $ innerText t
