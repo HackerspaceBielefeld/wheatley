@@ -18,13 +18,13 @@ executable wheatley
   main-is:             main.hs
   ghc-options:         -threaded
   -- other-modules:       
-  build-depends:       base ==4.6.*, 
+  build-depends:       base ==4.7.*, 
                        hslogger ==1.2.*, 
                        data-default ==0.5.3, 
                        pontarius-xmpp == 0.4.*, 
                        aeson ==0.7.0.*, 
                        text, 
-                       bytestring ==0.10.0.2, 
+                       bytestring ==0.10.*, 
                        xml-types ==0.3.4,
                        tagsoup ==0.13.*,
                        regex-compat ==0.95.*,
