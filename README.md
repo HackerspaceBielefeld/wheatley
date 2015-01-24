@@ -6,7 +6,8 @@ He's designed to be a moron.
 Current Features:
 -----------------
 * answers every subscriptions request
-* sends back every message he got to sender
+* :echo works
+* displays the title to a link
 
 Feautures on the row:
 ---------------------
