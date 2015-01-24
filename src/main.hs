@@ -9,6 +9,7 @@ import qualified Data.Text as T
 import Data.Maybe
 
 import Control.Monad
+import Control.Applicative
 import System.Log.Logger
 import Control.Concurrent
 
@@ -31,7 +32,7 @@ main = do
                         Right s -> return s
                         Left e  -> error $ "XmppFailure: " ++ show e
            _ <- sendPresence def sess
-           let channelJid = fromMaybe ( error "Invalid Channel" ) ( jidFromText $ channel c ) 
+           let channelJid = fromMaybe ( error "Invalid Channel" ) ( buildChannelJid c ) 
            chan <- joinChannel sess channelJid 
            _ <- case chan of
                         Right s -> return s
@@ -39,20 +40,26 @@ main = do
            sessPresenceRequest <- dupSession sess
            _ <- forkIO $ handlePresenceRequests sessPresenceRequest
            sessAnswerMessages <- dupSession sess
-           handleMessages sessAnswerMessages
+           handleMessages c sessAnswerMessages
+
+buildChannelJid :: XmppConfig -> Maybe Jid
+buildChannelJid x = jidFromText $ channel x `T.append` T.pack "/" `T.append` alias x
 
 joinChannel :: Session -> Jid -> IO ( Either XmppFailure () )
 joinChannel sess chan = do
    let channelPresence = Presence Nothing Nothing ( Just chan ) Nothing Available [] []
    sendPresence channelPresence sess
 
-handleMessages :: Session -> IO ()
-handleMessages sess = forever $ do
-   msg <- getMessage sess
-   case getIM msg of
-        Nothing                             -> return ()
-        Just (InstantMessage _ _ [])        -> return ()
-        Just (InstantMessage _ _ (MessageBody l c:_)) -> case T.words c of
+handleMessages :: XmppConfig ->  Session -> IO ()
+handleMessages x sess = forever $ do
+      let myJid = buildChannelJid x
+      msg <- getMessage sess
+      case (==) <$> myJid <*> messageFrom msg of
+            Just True -> return ()
+            _         -> case getIM msg of
+                         Nothing                             -> return ()
+                         Just (InstantMessage _ _ [])        -> return ()
+                         Just (InstantMessage _ _ (MessageBody l c:_)) -> case T.words c of
                                                []         -> return ()   
                                                ":echo":cs -> do
                                                      let body       = MessageBody l $ T.unwords cs
@@ -72,7 +79,7 @@ displayTitleForLinks sess msg text = do
      where displayTitles :: [(Maybe T.Text,  T.Text)] -> IO ()
            displayTitles []                     = return ()
            displayTitles ((Just title, orig):x) = do
-              let body = MessageBody (messageLangTag msg) (title `T.append` T.pack "\n" `T.append` orig)
+              let body = MessageBody (messageLangTag msg) (T.strip title `T.append` T.pack "\n" `T.append` orig)
               case answerMess msg body of
                    Nothing -> return () 
                    Just m  -> do
