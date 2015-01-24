@@ -18,7 +18,8 @@ data XmppConfig = XmppConfig {
    username    :: T.Text,
    password    :: T.Text,
    channel     :: T.Text,
-   fingerprint :: T.Text}
+   alias       :: T.Text,
+   selfsigned  :: Bool}
    deriving (Show, Generic)
 
 instance FromJSON XmppConfig
